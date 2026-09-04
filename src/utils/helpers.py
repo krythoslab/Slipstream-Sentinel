@@ -1,12 +1,14 @@
 from typing import Optional
+from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from src.config import MODLOG_CHANNEL_ID
 
-async def get_modlog_channel(bot: commands.Bot) -> Optional[discord.TextChannel]:
-    from src.bot import MODLOG_CHANNEL_ID
+
+def get_modlog_channel(bot: commands.Bot) -> Optional[discord.TextChannel]:
     channel = bot.get_channel(MODLOG_CHANNEL_ID)
     if isinstance(channel, discord.TextChannel):
         return channel
@@ -14,9 +16,22 @@ async def get_modlog_channel(bot: commands.Bot) -> Optional[discord.TextChannel]
 
 
 async def send_modlog(bot: commands.Bot, embed: discord.Embed) -> None:
-    channel = await get_modlog_channel(bot)
+    channel = get_modlog_channel(bot)
     if channel:
         await channel.send(embed=embed)
+
+
+def log_mod_action(guild_id: int, action: str, target_id: int, moderator_id: int, reason: str) -> None:
+    try:
+        import sqlite3
+        from src.config import MODLOG_DB_FILE
+        with sqlite3.connect(MODLOG_DB_FILE) as conn:
+            conn.execute(
+                "INSERT INTO mod_actions (guild_id, action, target_id, moderator_id, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (guild_id, action, target_id, moderator_id, reason, datetime.now(timezone.utc).isoformat()),
+            )
+    except Exception:
+        pass
 
 
 async def check_hierarchy(

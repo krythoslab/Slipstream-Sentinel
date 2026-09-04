@@ -1,9 +1,8 @@
 from typing import Optional
-import os
 import discord
 from discord import app_commands
 from discord.ext import commands
-from src.config import WELCOME_CHANNEL_ID
+from src.modules.config_storage import get_welcome_channel_id, set_welcome_channel_id
 from src.utils.errors import handle_command_error
 
 
@@ -16,7 +15,10 @@ class Welcome(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
-        channel = self.bot.get_channel(WELCOME_CHANNEL_ID)
+        channel_id = get_welcome_channel_id()
+        if not channel_id:
+            return
+        channel = self.bot.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
             return
         embed = discord.Embed(
@@ -31,8 +33,8 @@ class Welcome(commands.Cog):
 
     @app_commands.command(name="welcome_set", description="Set the welcome channel for this server")
     async def welcome_set(self, interaction: discord.Interaction, channel: discord.TextChannel) -> None:
-        import os
-        os.environ["WELCOME_CHANNEL_ID"] = str(channel.id)
-        global WELCOME_CHANNEL_ID
-        WELCOME_CHANNEL_ID = channel.id
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message("You need Manage Server permissions.", ephemeral=True)
+            return
+        set_welcome_channel_id(channel.id)
         await interaction.response.send_message(f"Welcome channel set to {channel.mention}")

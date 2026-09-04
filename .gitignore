@@ -5,8 +5,17 @@ __pycache__/
 .venv/
 venv/
 data/banned_words.json
+data/config.json
+data/modlog.db
 *.db
 *.sqlite
 *.sqlite3
 .DS_Store
 Thumbs.db
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.log
