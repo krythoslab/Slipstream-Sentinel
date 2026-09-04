@@ -237,35 +237,121 @@ python3 run.py
 
 ## Deployment
 
-### Process Manager (systemd)
+### Oracle Cloud Always Free (Recommended)
 
-Create `/etc/systemd/system/slipstream-sentinel.service`:
+Deploy Sentinel as a 24/7 background service using systemd on an Oracle Cloud Always Free VM.
 
-```ini
-[Unit]
-Description=Slipstream Sentinel Discord Bot
-After=network.target
+#### 1. Provision the VM
 
-[Service]
-Type=simple
-User=discordbot
-WorkingDirectory=/opt/slipstream-sentinel
-ExecStart=/usr/bin/python3 run.py
-Restart=always
-RestartSec=10
-EnvironmentFile=/opt/slipstream-sentinel/.env
+- Create an **Oracle Linux 8/9** or **Ubuntu 22.04/24.04** instance in the Oracle Cloud Always Free tier.
+- Open port **22** (SSH) in the VCN security list.
+- (Optional) Open port **80/443** if you plan to expose a web dashboard later.
 
-[Install]
-WantedBy=multi-user.target
-```
+#### 2. Connect via SSH
 
 ```bash
+ssh -i /path/to/your/key opc@<your-vm-ip>
+```
+
+For Oracle Linux, the default user is `opc`. For Ubuntu, it's `ubuntu`.
+
+#### 3. Install System Dependencies
+
+**Oracle Linux:**
+
+```bash
+sudo dnf update -y
+sudo dnf install -y python3 python3-pip python3-venv git
+```
+
+**Ubuntu:**
+
+```bash
+sudo apt update -y
+sudo apt install -y python3 python3-pip python3-venv git
+```
+
+#### 4. Create a Non-Root User
+
+```bash
+sudo useradd -m -s /bin/bash discordbot
+sudo passwd discordbot
+```
+
+#### 5. Clone the Repository
+
+```bash
+sudo -u discordbot -H bash -c '
+git clone https://github.com/krythoslab/Slipstream-Sentinel.git /opt/slipstream-sentinel &&
+cd /opt/slipstream-sentinel &&
+python3 -m venv .venv &&
+source .venv/bin/activate &&
+pip install --upgrade pip &&
+pip install -r requirements.txt
+'
+```
+
+#### 6. Configure Secrets
+
+```bash
+sudo -u discordbot bash -c '
+cp .env.example .env
+nano .env
+```
+
+Fill in:
+- `DISCORD_TOKEN` (from Discord Developer Portal)
+- `CLIENT_ID=1545238354302607450`
+- `GUILD_ID=1545179492815741059`
+
+**Security:** `.env` is gitignored and must never be committed.
+
+#### 7. Install the systemd Service
+
+```bash
+sudo cp systemd/slipstream-sentinel.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable slipstream-sentinel
+```
+
+#### 8. Start the Bot
+
+```bash
 sudo systemctl start slipstream-sentinel
 ```
 
-### Docker
+#### 9. Verify It's Running
+
+```bash
+sudo systemctl status slipstream-sentinel
+journalctl -u slipstream-sentinel -f
+```
+
+#### 10. Common Operations
+
+| Task | Command |
+|------|---------|
+| Check status | `sudo systemctl status slipstream-sentinel` |
+| View logs | `sudo journalctl -u slipstream-sentinel -f` |
+| Restart | `sudo systemctl restart slipstream-sentinel` |
+| Stop | `sudo systemctl stop slipstream-sentinel` |
+| Disable autostart | `sudo systemctl disable slipstream-sentinel` |
+| Re-enable autostart | `sudo systemctl enable slipstream-sentinel` |
+
+#### 11. Update Sentinel
+
+```bash
+sudo -u discordbot bash -c '
+cd /opt/slipstream-sentinel &&
+git pull origin main &&
+source .venv/bin/activate &&
+pip install -r requirements.txt &&
+exit
+'
+sudo systemctl restart slipstream-sentinel
+```
+
+### Docker Deployment (Alternative)
 
 ```dockerfile
 FROM python:3.11-slim
@@ -273,13 +359,20 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD ["python", run.py]
+CMD ["python", "run.py"]
 ```
 
 ```bash
 docker build -t slipstream-sentinel .
-docker run -d --env-file .env --name sentinel slipstream-sentinel
+docker run -d --env-file .env --name sentinel --restart unless-stopped slipstream-sentinel
 ```
+
+### Security Notes
+
+- Never commit `.env` or any file containing `DISCORD_TOKEN`.
+- The systemd service file uses `ProtectSystem=full`, `ProtectHome=read-only`, and `NoNewPrivileges=true`.
+- Run as a dedicated `discordbot` user, never as root.
+- The `.env` file should have permissions `600` (`chmod 600 .env`).
 
 ## Roadmap
 
