@@ -21,3 +21,7 @@ class Admin(commands.GroupCog, name="admin"):
             await interaction.response.send_message(f"Reloaded cog: {cog}")
         except Exception as exc:
             await interaction.response.send_message(f"Failed to reload: {exc}", ephemeral=True)
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(Admin(bot))

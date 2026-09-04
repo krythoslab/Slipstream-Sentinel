@@ -38,3 +38,7 @@ class Welcome(commands.Cog):
             return
         set_welcome_channel_id(channel.id)
         await interaction.response.send_message(f"Welcome channel set to {channel.mention}")
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(Welcome(bot))

@@ -153,3 +153,7 @@ class AutoMod(commands.Cog):
             await interaction.response.send_message("No banned words configured.", ephemeral=True)
             return
         await interaction.response.send_message(", ".join(self.banned_words), ephemeral=True)
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(AutoMod(bot))

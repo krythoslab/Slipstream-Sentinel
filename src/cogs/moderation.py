@@ -162,3 +162,7 @@ class Moderation(commands.GroupCog, name="mod"):
         for row in rows:
             lines.append(f"- **{row['action']}**: {row.get('reason', 'No reason')} ({row['created_at'][:10]})")
         await interaction.response.send_message("\n".join(lines), ephemeral=True)
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(Moderation(bot))

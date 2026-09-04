@@ -37,3 +37,7 @@ class Info(commands.Cog):
         embed.add_field(name="Discord.py", value=discord.__version__)
         embed.set_footer(text="Slipstream Motorsport")
         await interaction.response.send_message(embed=embed)
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(Info(bot))
