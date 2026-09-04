@@ -292,12 +292,12 @@ class Sentinel(discord.Client):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
         self.automod = AutoModEngine()
-        self.reminder_task.start()
 
     async def setup_hook(self):
         await self.tree.sync(guild=discord.Object(id=GUILD_ID))
         init_db()
         await self.update_reminders()
+        self.reminder_task.start()
 
     async def on_ready(self):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
