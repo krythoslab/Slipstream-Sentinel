@@ -99,9 +99,22 @@ class SlipstreamBot(commands.Bot):
             self.logger.error("Bot user is None in on_ready")
             return
         self.logger.info("Logged in as %s (ID: %s)", self.user, self.user.id)
+        try:
+            cmds = [c.name for c in self.tree.get_commands()]
+            self.logger.info("Registered commands: %s", cmds)
+        except Exception as exc:
+            self.logger.error("Failed to list commands: %s", exc)
 
     async def on_error(self, event: str, *args, **kwargs) -> None:
         self.logger.exception("Error in event %s", event)
+
+    async def on_app_command_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        self.logger.exception("App command error: %s", error)
+        if not interaction.response.is_done():
+            try:
+                await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+            except Exception:
+                pass
 
 
 def run() -> None:
