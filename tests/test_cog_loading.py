@@ -10,6 +10,14 @@ class TestCogLoading(unittest.TestCase):
         "src/cogs/automod.py",
         "src/cogs/welcome.py",
         "src/cogs/info.py",
+        "src/cogs/config.py",
+        "src/cogs/announcements.py",
+        "src/cogs/roles.py",
+        "src/cogs/infoserver.py",
+        "src/cogs/polls.py",
+        "src/cogs/league.py",
+        "src/cogs/racecontrol.py",
+        "src/cogs/automation.py",
     ]
 
     def _has_setup_function(self, filepath: str) -> bool:
@@ -34,6 +42,30 @@ class TestCogLoading(unittest.TestCase):
 
     def test_info_has_setup(self) -> None:
         self.assertTrue(self._has_setup_function("src/cogs/info.py"))
+
+    def test_config_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/config.py"))
+
+    def test_announcements_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/announcements.py"))
+
+    def test_roles_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/roles.py"))
+
+    def test_infoserver_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/infoserver.py"))
+
+    def test_polls_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/polls.py"))
+
+    def test_league_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/league.py"))
+
+    def test_racecontrol_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/racecontrol.py"))
+
+    def test_automation_has_setup(self) -> None:
+        self.assertTrue(self._has_setup_function("src/cogs/automation.py"))
 
 
 if __name__ == "__main__":

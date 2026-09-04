@@ -8,13 +8,19 @@ load_dotenv(PROJECT_ROOT / ".env")
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN", "")
 CLIENT_ID: str = os.getenv("CLIENT_ID", "1545238354302607450")
 GUILD_ID: str = os.getenv("GUILD_ID", "1545179492815741059")
+
 WELCOME_CHANNEL_ID: int = int(os.getenv("WELCOME_CHANNEL_ID", "0") or "0")
+LEAVE_CHANNEL_ID: int = int(os.getenv("LEAVE_CHANNEL_ID", "0") or "0")
 MODLOG_CHANNEL_ID: int = int(os.getenv("MODLOG_CHANNEL_ID", "0") or "0")
+ANNOUNCEMENT_CHANNEL_ID: int = int(os.getenv("ANNOUNCEMENT_CHANNEL_ID", "0") or "0")
+AUTOMOD_ALERT_CHANNEL_ID: int = int(os.getenv("AUTOMOD_ALERT_CHANNEL_ID", "0") or "0")
 
 AUTOMOD_MENTION_THRESHOLD: int = int(os.getenv("AUTOMOD_MENTION_THRESHOLD", "8"))
 AUTOMOD_URL_THRESHOLD: int = int(os.getenv("AUTOMOD_URL_THRESHOLD", "3"))
 AUTOMOD_SPAM_THRESHOLD: int = int(os.getenv("AUTOMOD_SPAM_THRESHOLD", "5"))
 AUTOMOD_SPAM_WINDOW: float = float(os.getenv("AUTOMOD_SPAM_WINDOW", "5.0"))
+AUTOMOD_RAID_THRESHOLD: int = int(os.getenv("AUTOMOD_RAID_THRESHOLD", "10"))
+AUTOMOD_RAID_WINDOW: float = float(os.getenv("AUTOMOD_RAID_WINDOW", "60.0"))
 
 DATA_DIR: Path = PROJECT_ROOT / "data"
 BANNED_WORDS_FILE: Path = DATA_DIR / "banned_words.json"

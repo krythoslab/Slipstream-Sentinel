@@ -2,7 +2,7 @@ from typing import Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from src.utils.helpers import (
     ensure_mod_permissions,
     check_hierarchy,
@@ -25,6 +25,13 @@ class Moderation(commands.GroupCog, name="mod"):
             return
         if not await check_hierarchy(interaction, member):
             return
+        import sqlite3
+        from src.config import MODLOG_DB_FILE
+        with sqlite3.connect(MODLOG_DB_FILE) as conn:
+            conn.execute(
+                "INSERT INTO warnings (guild_id, user_id, moderator_id, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+                (interaction.guild_id, member.id, interaction.user.id, reason, datetime.now(timezone.utc).isoformat()),
+            )
         log_mod_action(interaction.guild_id, "warn", member.id, interaction.user.id, reason)
         embed = discord.Embed(
             title="Warn Issued",
@@ -35,6 +42,56 @@ class Moderation(commands.GroupCog, name="mod"):
         embed.set_footer(text=f"Moderator: {interaction.user}")
         await interaction.response.send_message(embed=embed)
         await send_modlog(self.bot, embed)
+
+    @app_commands.command(name="unwarn", description="Remove the latest warning from a member")
+    async def unwarn(self, interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = "No reason provided") -> None:
+        if not await ensure_mod_permissions(interaction):
+            return
+        if not await check_hierarchy(interaction, member):
+            return
+        import sqlite3
+        from src.config import MODLOG_DB_FILE
+        with sqlite3.connect(MODLOG_DB_FILE) as conn:
+            cursor = conn.execute(
+                "SELECT id FROM warnings WHERE guild_id = ? AND user_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 1",
+                (interaction.guild_id, member.id),
+            )
+            row = cursor.fetchone()
+            if not row:
+                await interaction.response.send_message("No active warnings found for this member.", ephemeral=True)
+                return
+            conn.execute("UPDATE warnings SET active = 0 WHERE id = ?", (row[0],))
+        log_mod_action(interaction.guild_id, "unwarn", member.id, interaction.user.id, reason)
+        embed = discord.Embed(
+            title="Warning Removed",
+            description=f"Latest warning removed from {member.mention}.",
+            color=discord.Color.green(),
+        )
+        embed.add_field(name="Reason", value=reason)
+        embed.set_footer(text=f"Moderator: {interaction.user}")
+        await interaction.response.send_message(embed=embed)
+        await send_modlog(self.bot, embed)
+
+    @app_commands.command(name="warnings", description="List warnings for a member")
+    async def warnings(self, interaction: discord.Interaction, member: discord.Member) -> None:
+        if not await ensure_mod_permissions(interaction):
+            return
+        import sqlite3
+        from src.config import MODLOG_DB_FILE
+        with sqlite3.connect(MODLOG_DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT reason, created_at, active FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 20",
+                (interaction.guild_id, member.id),
+            ).fetchall()
+        if not rows:
+            await interaction.response.send_message("No warnings found.", ephemeral=True)
+            return
+        lines = []
+        for row in rows:
+            status = "Active" if row["active"] else "Removed"
+            lines.append(f"- **{row['reason']}** ({row['created_at'][:10]}) — {status}")
+        await interaction.response.send_message("\n".join(lines), ephemeral=True)
 
     @app_commands.command(name="timeout", description="Timeout a member")
     @app_commands.describe(minutes="Duration in minutes (max 40320)")
@@ -50,6 +107,24 @@ class Moderation(commands.GroupCog, name="mod"):
             title="Timeout Applied",
             description=f"{member.mention} has been timed out for {minutes} minute(s).",
             color=discord.Color.orange(),
+        )
+        embed.add_field(name="Reason", value=reason)
+        embed.set_footer(text=f"Moderator: {interaction.user}")
+        await interaction.response.send_message(embed=embed)
+        await send_modlog(self.bot, embed)
+
+    @app_commands.command(name="untimeout", description="Remove timeout from a member")
+    async def untimeout(self, interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = "No reason provided") -> None:
+        if not await ensure_mod_permissions(interaction):
+            return
+        if not await check_hierarchy(interaction, member):
+            return
+        await member.timeout(None, reason=reason)
+        log_mod_action(interaction.guild_id, "untimeout", member.id, interaction.user.id, reason)
+        embed = discord.Embed(
+            title="Timeout Removed",
+            description=f"Timeout removed from {member.mention}.",
+            color=discord.Color.green(),
         )
         embed.add_field(name="Reason", value=reason)
         embed.set_footer(text=f"Moderator: {interaction.user}")
@@ -137,6 +212,69 @@ class Moderation(commands.GroupCog, name="mod"):
             color=discord.Color.purple(),
         )
         embed.set_footer(text=f"Moderator: {interaction.user}")
+        await send_modlog(self.bot, embed)
+
+    @app_commands.command(name="lock", description="Lock a channel")
+    async def lock(self, interaction: discord.Interaction, channel: Optional[discord.TextChannel] = None) -> None:
+        if not await ensure_mod_permissions(interaction):
+            return
+        target = channel or (interaction.channel if isinstance(interaction.channel, discord.TextChannel) else None)
+        if not target:
+            await interaction.response.send_message("Specify a text channel.", ephemeral=True)
+            return
+        overwrite = target.overwrites_for(interaction.guild.default_role)
+        overwrite.send_messages = False
+        await target.set_permissions(interaction.guild.default_role, overwrite=overwrite)
+        log_mod_action(interaction.guild_id, "lock", 0, interaction.user.id, f"Locked channel {target.id}")
+        embed = discord.Embed(
+            title="Channel Locked",
+            description=f"{target.mention} has been locked.",
+            color=discord.Color.dark_red(),
+        )
+        embed.set_footer(text=f"Moderator: {interaction.user}")
+        await interaction.response.send_message(embed=embed)
+        await send_modlog(self.bot, embed)
+
+    @app_commands.command(name="unlock", description="Unlock a channel")
+    async def unlock(self, interaction: discord.Interaction, channel: Optional[discord.TextChannel] = None) -> None:
+        if not await ensure_mod_permissions(interaction):
+            return
+        target = channel or (interaction.channel if isinstance(interaction.channel, discord.TextChannel) else None)
+        if not target:
+            await interaction.response.send_message("Specify a text channel.", ephemeral=True)
+            return
+        overwrite = target.overwrites_for(interaction.guild.default_role)
+        overwrite.send_messages = None
+        await target.set_permissions(interaction.guild.default_role, overwrite=overwrite)
+        log_mod_action(interaction.guild_id, "unlock", 0, interaction.user.id, f"Unlocked channel {target.id}")
+        embed = discord.Embed(
+            title="Channel Unlocked",
+            description=f"{target.mention} has been unlocked.",
+            color=discord.Color.green(),
+        )
+        embed.set_footer(text=f"Moderator: {interaction.user}")
+        await interaction.response.send_message(embed=embed)
+        await send_modlog(self.bot, embed)
+
+    @app_commands.command(name="slowmode", description="Set channel slowmode")
+    @app_commands.describe(seconds="Delay in seconds (0-21600, 0 to disable)")
+    async def slowmode(self, interaction: discord.Interaction, seconds: int, channel: Optional[discord.TextChannel] = None) -> None:
+        if not await ensure_mod_permissions(interaction):
+            return
+        target = channel or (interaction.channel if isinstance(interaction.channel, discord.TextChannel) else None)
+        if not target:
+            await interaction.response.send_message("Specify a text channel.", ephemeral=True)
+            return
+        seconds = max(0, min(seconds, 21600))
+        await target.edit(slowmode_delay=seconds)
+        log_mod_action(interaction.guild_id, "slowmode", 0, interaction.user.id, f"Set slowmode to {seconds}s in channel {target.id}")
+        embed = discord.Embed(
+            title="Slowmode Updated",
+            description=f"Slowmode set to {seconds} second(s) in {target.mention}.",
+            color=discord.Color.orange(),
+        )
+        embed.set_footer(text=f"Moderator: {interaction.user}")
+        await interaction.response.send_message(embed=embed)
         await send_modlog(self.bot, embed)
 
     @app_commands.command(name="history", description="View moderation history for a user")

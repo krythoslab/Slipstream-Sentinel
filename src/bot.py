@@ -75,6 +75,95 @@ class SlipstreamBot(commands.Bot):
                     )
                     """
                 )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS warnings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        moderator_id INTEGER NOT NULL,
+                        reason TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        active INTEGER NOT NULL DEFAULT 1
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS raids (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        join_count INTEGER NOT NULL,
+                        created_at TEXT NOT NULL
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS league_drivers (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        team_name TEXT,
+                        number INTEGER,
+                        created_at TEXT NOT NULL
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS league_teams (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS league_races (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        circuit TEXT,
+                        date TEXT,
+                        created_at TEXT NOT NULL
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS league_results (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        race_id INTEGER NOT NULL,
+                        guild_id INTEGER NOT NULL,
+                        driver_id INTEGER NOT NULL,
+                        position INTEGER,
+                        points INTEGER DEFAULT 0,
+                        time TEXT,
+                        created_at TEXT NOT NULL
+                    )
+                    """
+                )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS race_control_cases (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        incident_number TEXT NOT NULL,
+                        driver_id INTEGER NOT NULL,
+                        reporter_id INTEGER NOT NULL,
+                        description TEXT,
+                        evidence TEXT,
+                        status TEXT DEFAULT 'open',
+                        penalty TEXT,
+                        dismissed_reason TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    )
+                    """
+                )
         except Exception as exc:
             self.logger.error("Failed to initialize database: %s", exc)
 
@@ -84,6 +173,14 @@ class SlipstreamBot(commands.Bot):
         await self.load_extension("src.cogs.automod")
         await self.load_extension("src.cogs.welcome")
         await self.load_extension("src.cogs.info")
+        await self.load_extension("src.cogs.config")
+        await self.load_extension("src.cogs.announcements")
+        await self.load_extension("src.cogs.roles")
+        await self.load_extension("src.cogs.infoserver")
+        await self.load_extension("src.cogs.polls")
+        await self.load_extension("src.cogs.league")
+        await self.load_extension("src.cogs.racecontrol")
+        await self.load_extension("src.cogs.automation")
         if not self._synced:
             try:
                 guild = discord.Object(id=GUILD_ID)
