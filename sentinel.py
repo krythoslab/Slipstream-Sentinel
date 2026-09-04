@@ -17,7 +17,12 @@ from discord.ext import tasks
 # ─── Constants ────────────────────────────────────────────────────────────────
 CLIENT_ID = 1545480902841339935
 GUILD_ID = 1545179492815741059
-DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
+
+FALLBACK_DISCORD_TOKEN = "MTU0NTQ4MDkwMjg0MTMzOTkzNQ.Gl4Qz0.sf8VJg7kxX5Wa3LWqIitGqIonxnv-Ta1rAeFnE"
+
+DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN") or FALLBACK_DISCORD_TOKEN
+if not DISCORD_TOKEN:
+    raise RuntimeError("DISCORD_TOKEN not set. Set the environment variable or edit FALLBACK_DISCORD_TOKEN in sentinel.py.")
 
 DATA_DIR = os.environ.get("DATA_DIR")
 if DATA_DIR:
