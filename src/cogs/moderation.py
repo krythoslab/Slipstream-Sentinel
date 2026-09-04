@@ -7,6 +7,7 @@ from src.utils.helpers import (
     ensure_mod_permissions,
     check_hierarchy,
     send_modlog,
+    log_mod_action,
 )
 from src.utils.errors import handle_command_error
 
@@ -14,13 +15,9 @@ from src.utils.errors import handle_command_error
 class Moderation(commands.GroupCog, name="mod"):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self._history: dict[int, list[dict]] = {}
 
     async def cog_app_command_error(self, interaction: discord.Interaction, error: Exception) -> None:
         await handle_command_error(interaction, error)
-
-    def _add_history(self, guild_id: int, entry: dict) -> None:
-        self._history.setdefault(guild_id, []).append(entry)
 
     @app_commands.command(name="warn", description="Warn a member")
     async def warn(self, interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = "No reason provided") -> None:
@@ -28,7 +25,7 @@ class Moderation(commands.GroupCog, name="mod"):
             return
         if not await check_hierarchy(interaction, member):
             return
-        self._add_history(interaction.guild_id, {"action": "warn", "user_id": member.id, "reason": reason})
+        log_mod_action(interaction.guild_id, "warn", member.id, interaction.user.id, reason)
         embed = discord.Embed(
             title="Warn Issued",
             description=f"{member.mention} has been warned.",
@@ -48,7 +45,7 @@ class Moderation(commands.GroupCog, name="mod"):
             return
         duration = timedelta(minutes=min(minutes, 40320))
         await member.timeout(duration, reason=reason)
-        self._add_history(interaction.guild_id, {"action": "timeout", "user_id": member.id, "duration": minutes, "reason": reason})
+        log_mod_action(interaction.guild_id, "timeout", member.id, interaction.user.id, reason)
         embed = discord.Embed(
             title="Timeout Applied",
             description=f"{member.mention} has been timed out for {minutes} minute(s).",
@@ -66,7 +63,7 @@ class Moderation(commands.GroupCog, name="mod"):
         if not await check_hierarchy(interaction, member):
             return
         await member.kick(reason=reason)
-        self._add_history(interaction.guild_id, {"action": "kick", "user_id": member.id, "reason": reason})
+        log_mod_action(interaction.guild_id, "kick", member.id, interaction.user.id, reason)
         embed = discord.Embed(
             title="Member Kicked",
             description=f"{member.mention} has been kicked.",
@@ -84,7 +81,7 @@ class Moderation(commands.GroupCog, name="mod"):
         if not await check_hierarchy(interaction, member):
             return
         await member.ban(reason=reason)
-        self._add_history(interaction.guild_id, {"action": "ban", "user_id": member.id, "reason": reason})
+        log_mod_action(interaction.guild_id, "ban", member.id, interaction.user.id, reason)
         embed = discord.Embed(
             title="Member Banned",
             description=f"{member.mention} has been banned.",
@@ -111,7 +108,7 @@ class Moderation(commands.GroupCog, name="mod"):
         except discord.NotFound:
             await interaction.response.send_message("User not found in ban list.", ephemeral=True)
             return
-        self._add_history(interaction.guild_id, {"action": "unban", "user_id": user_id_int, "reason": reason})
+        log_mod_action(interaction.guild_id, "unban", user_id_int, interaction.user.id, reason)
         embed = discord.Embed(
             title="User Unbanned",
             description=f"User ID {user_id} has been unbanned.",
@@ -132,7 +129,7 @@ class Moderation(commands.GroupCog, name="mod"):
             return
         amount = max(1, min(amount, 100))
         deleted = await interaction.channel.purge(limit=amount)
-        self._add_history(interaction.guild_id, {"action": "purge", "channel_id": interaction.channel_id, "amount": len(deleted)})
+        log_mod_action(interaction.guild_id, "purge", 0, interaction.user.id, f"Purged {len(deleted)} messages in channel {interaction.channel_id}")
         await interaction.response.send_message(f"Deleted {len(deleted)} message(s).", ephemeral=True)
         embed = discord.Embed(
             title="Messages Purged",
@@ -147,12 +144,21 @@ class Moderation(commands.GroupCog, name="mod"):
     async def history(self, interaction: discord.Interaction, user: discord.User) -> None:
         if not await ensure_mod_permissions(interaction):
             return
-        entries = self._history.get(interaction.guild_id, [])
-        user_entries = [e for e in entries if e.get("user_id") == user.id]
-        if not user_entries:
+        try:
+            import sqlite3
+            from src.config import MODLOG_DB_FILE
+            with sqlite3.connect(MODLOG_DB_FILE) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(
+                    "SELECT action, reason, created_at FROM mod_actions WHERE guild_id = ? AND target_id = ? ORDER BY created_at DESC LIMIT 20",
+                    (interaction.guild_id, user.id),
+                ).fetchall()
+        except Exception:
+            rows = []
+        if not rows:
             await interaction.response.send_message("No moderation history found.", ephemeral=True)
             return
         lines = []
-        for entry in user_entries[-20:]:
-            lines.append(f"- **{entry['action']}**: {entry.get('reason', 'No reason')}")
+        for row in rows:
+            lines.append(f"- **{row['action']}**: {row.get('reason', 'No reason')} ({row['created_at'][:10]})")
         await interaction.response.send_message("\n".join(lines), ephemeral=True)

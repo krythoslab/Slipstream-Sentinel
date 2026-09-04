@@ -1,4 +1,6 @@
 import platform
+from datetime import datetime, timezone
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -21,7 +23,7 @@ class Info(commands.Cog):
     @app_commands.command(name="about", description="Bot information")
     async def about(self, interaction: discord.Interaction) -> None:
         bot: SlipstreamBot = self.bot
-        uptime = discord.utils.utcnow() - bot.start_time
+        uptime = datetime.now(timezone.utc) - bot.start_time
         hours, remainder = divmod(int(uptime.total_seconds()), 3600)
         minutes, _ = divmod(remainder, 60)
         embed = discord.Embed(
