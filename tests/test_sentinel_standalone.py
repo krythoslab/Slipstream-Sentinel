@@ -86,6 +86,25 @@ class TestSentinelStandalone(unittest.TestCase):
         self.assertIn('CLIENT_ID', source)
         self.assertIn('GUILD_ID', source)
 
+    def test_has_data_dir_fallback(self) -> None:
+        source = SENTINEL_FILE.read_text(encoding="utf-8")
+        self.assertIn("_resolve_data_dir", source)
+        self.assertIn("DATA_DIR", source)
+        self.assertIn("/tmp/slipstream-sentinel", source)
+
+    def test_no_sleep_until_in_remind(self) -> None:
+        source = SENTINEL_FILE.read_text(encoding="utf-8")
+        self.assertNotIn("sleep_until", source, "remind must not use sleep_until")
+
+    def test_reminders_table_exists(self) -> None:
+        source = SENTINEL_FILE.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS reminders", source)
+
+    def test_reminder_loop_queries_due_reminders(self) -> None:
+        source = SENTINEL_FILE.read_text(encoding="utf-8")
+        self.assertIn("SELECT id, user_id, channel_id, message FROM reminders WHERE due_at <= ?", source)
+        self.assertIn("DELETE FROM reminders WHERE id IN", source)
+
     def test_creates_sqlite_tables(self) -> None:
         source = SENTINEL_FILE.read_text(encoding="utf-8")
         expected_tables = [

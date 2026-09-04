@@ -164,6 +164,18 @@ class SlipstreamBot(commands.Bot):
                     )
                     """
                 )
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS reminders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        channel_id INTEGER NOT NULL,
+                        message TEXT NOT NULL,
+                        due_at TEXT NOT NULL,
+                        created_at TEXT NOT NULL
+                    )
+                    """
+                )
         except Exception as exc:
             self.logger.error("Failed to initialize database: %s", exc)
 
