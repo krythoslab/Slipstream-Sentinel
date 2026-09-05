@@ -1,0 +1,6 @@
+# Runtime / generated
+sentinel.db
+*.db
+__pycache__/
+*.pyc
+.env
