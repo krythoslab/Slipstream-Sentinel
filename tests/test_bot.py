@@ -1,5 +1,7 @@
 import asyncio
+import importlib.util
 import unittest
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
@@ -74,9 +76,16 @@ class TestAutoMod(unittest.TestCase):
         member.id = 999
         member.guild.id = 123
         # We test via the is_dangerous_role utility, not the full engine
+        perms = MagicMock()
+        perms.administrator = False
+        perms.manage_guild = False
+        perms.manage_roles = False
+        perms.manage_channels = False
+        perms.ban_members = False
+        perms.kick_members = False
+        perms.manage_webhooks = False
         role = MagicMock(spec=Role)
-        role.permissions.administrator = False
-        role.permissions.manage_guild = False
+        role.permissions = perms
         self.assertFalse(is_dangerous_role(role))
 
 
@@ -113,9 +122,11 @@ class TestTokenConfig(unittest.TestCase):
     def test_missing_token_raises(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaises(RuntimeError):
-                from sentinel import config
-                import importlib
-                importlib.reload(config)
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("main_module", str(Path(__file__).resolve().parent.parent / "main.py"))
+                main_mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(main_mod)
+                main_mod.main()
 
 
 if __name__ == "__main__":

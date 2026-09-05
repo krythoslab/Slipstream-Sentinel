@@ -11,6 +11,8 @@ from sentinel.bot import SentinelBot
 
 
 def main():
+    if not DISCORD_TOKEN:
+        raise RuntimeError("DISCORD_TOKEN environment variable is required.")
     db = Database(DB_PATH)
     bot = SentinelBot(db)
     bot.run(DISCORD_TOKEN)

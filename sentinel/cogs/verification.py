@@ -18,9 +18,9 @@ class Verification(commands.Cog):
         if not row or not row.get("enabled") or not row.get("role_id") or not row.get("channel_id"):
             return
         role = member.guild.get_role(row["role_id"])
-        if not role:
+        if not role or is_dangerous_role(role) or role >= member.guild.me.top_role:
             return
-        account_age = (utcnow().replace(tzinfo=None) - member.created_at.replace(tzinfo=None)).days
+        account_age = (utcnow() - member.created_at).days
         if account_age >= row.get("min_account_age_days", 7):
             try:
                 await member.add_roles(role, reason="Verification passed")

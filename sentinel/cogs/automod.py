@@ -134,12 +134,6 @@ class AutoMod(commands.Cog):
         invite_pattern = re.compile(r"discord\.gg/[^\s]+|discordapp\.com/invite/[^\s]+|discord\.com/invite/[^\s]+", re.IGNORECASE)
         for match in invite_pattern.finditer(content):
             invite = match.group(0)
-            if invite.lower().replace("https://", "").replace("http://", "") in [
-                f"discord.gg/{guild_id}",
-                f"discordapp.com/invite/{guild_id}",
-                f"discord.com/invite/{guild_id}",
-            ]:
-                continue
             whitelisted = False
             for role in message.author.roles:
                 if role.id in self._whitelist_cache.get(guild_id, set()):

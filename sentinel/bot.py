@@ -47,18 +47,27 @@ class SentinelBot(commands.Bot):
             print(f"  /{cmd.name}")
 
     async def on_member_join(self, member: discord.Member):
-        await self.get_cog("AutoMod").process_join(member)
-        await self.get_cog("AutoRole").process_join(member)
-        await self.get_cog("Verification").process_join(member)
-        await self.get_cog("Welcome").process_join(member)
+        try:
+            await self.get_cog("AutoMod").process_join(member)
+            await self.get_cog("AutoRole").process_join(member)
+            await self.get_cog("Verification").process_join(member)
+            await self.get_cog("Welcome").process_join(member)
+        except Exception:
+            pass
 
     async def on_member_remove(self, member: discord.Member):
-        await self.get_cog("Leave").process_leave(member)
+        try:
+            await self.get_cog("Leave").process_leave(member)
+        except Exception:
+            pass
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
             return
-        await self.get_cog("AutoMod").process_message(message)
+        try:
+            await self.get_cog("AutoMod").process_message(message)
+        except Exception:
+            pass
 
     @tasks.loop(seconds=30)
     async def reminder_loop(self):
@@ -75,7 +84,12 @@ class SentinelBot(commands.Bot):
                 await channel.send(f"Reminder for <@{row['user_id']}>: {row['content']}")
             except discord.Forbidden:
                 pass
-            await self.db.execute("DELETE FROM reminders WHERE id = ?", (row["id"],))
+            except Exception:
+                pass
+            try:
+                await self.db.execute("DELETE FROM reminders WHERE id = ?", (row["id"],))
+            except Exception:
+                pass
 
     @reminder_loop.before_loop
     async def before_reminder_loop(self):

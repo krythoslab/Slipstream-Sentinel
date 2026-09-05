@@ -31,6 +31,9 @@ class Server(commands.Cog):
         if is_dangerous_role(role):
             await error_response(interaction, "Cannot assign dangerous roles.")
             return
+        if not hierarchy_ok(interaction.user, user):
+            await error_response(interaction, "Role hierarchy too low.")
+            return
         try:
             await user.add_roles(role, reason=f"By {interaction.user}")
             await interaction.response.send_message(f"Gave {role.name} to {user.mention}.")
@@ -45,6 +48,9 @@ class Server(commands.Cog):
             return
         if role >= interaction.guild.me.top_role:
             await error_response(interaction, "Role is too high.")
+            return
+        if not hierarchy_ok(interaction.user, user):
+            await error_response(interaction, "Role hierarchy too low.")
             return
         try:
             await user.remove_roles(role, reason=f"By {interaction.user}")

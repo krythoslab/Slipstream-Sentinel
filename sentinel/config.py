@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-if not DISCORD_TOKEN:
-    raise RuntimeError("DISCORD_TOKEN environment variable is required.")
 
 CLIENT_ID = 1545480902841339935
 
@@ -31,7 +29,7 @@ AUTOMOD_DEFAULTS = {
     "mention_threshold": 5,
     "caps_threshold": 0.7,
     "emoji_threshold": 0.5,
-    "invite_action": "delete",
+    "invite_action": "warn",
     "url_action": "delete",
     "word_action": "delete",
     "enabled": 1,
